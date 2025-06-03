@@ -4,7 +4,7 @@
 // - Se presiona el botón de inicio (I0.0)
 // - NO está activo el botón de parada (I0.1)
 // - NO hay emergencia (I0.2)
-// - El sensor de límite de parada (I0.6) está activo (posición segura)
+// - El sensor de límite de parada (I0.6) está activo
 // ======================================================================================
 LD I0.0           // Botón de inicio
 LD I0.1           // Botón de parada
@@ -60,7 +60,7 @@ AN I0.2        // A NOT I0.2
 
 // ======================================================================================
 // Rung 5: Reset del contador C0 (M0.2)
-// Cuando el contador llega a 0 (C0.Q == 1) y MR está activo:
+// Cuando el contador llega a 0 (C0 == 1) y MR está activo:
 // - Se activa M0.2 para resetear C0 y comenzar un nuevo ciclo
 // ======================================================================================
 LD M0.0           // MR activo
@@ -76,10 +76,10 @@ R C0, 1           // Resetea el contador C0
 // Al terminar, se activa Q0.1 (motor de poscorte)
 // ======================================================================================
 LD M0.1
-TON T1, 50 // 50 * 10ms = 5 segundos
+TON T1, 50      // 50 * 10ms = 5 segundos
 
-LD T1.Q
-= Q0.1
+LD T1           // Carga el bit de salida del temporizador (T1.Q)
+= Q0.1          // Activa el motor de poscorte
 
 // ======================================================================================
 // Rung 7: Temporizador T2 – Acción ajuste tamaño
@@ -87,14 +87,14 @@ LD T1.Q
 // Al terminar, se activa Q0.2 (motor de ajuste de tamaño)
 // ======================================================================================
 LD M0.5
-TON T2, 20 // 20 * 10ms = 2 segundos
+TON T2, 20      // 20 * 10ms = 2 segundos
 
-LD T2.Q
-= Q0.2
+LD T2           // Carga el bit de salida del temporizador (T2.Q)
+= Q0.2          // Activa el motor de ajuste de tamaño
 
 // ======================================================================================
 // Rung 8: Verificación de alineación
-// Mientras el contador no haya terminado (C0.Q == 1):
+// Mientras el contador no haya terminado (C0 == 1):
 // - Se activa M0.4 (alignment_check): verificando alineación
 // - Si el sensor de alineación (I0.4) se activa → M0.5 (alignment_ok)
 // - Si el sensor NO se activa → M0.3 (alineacion_error)
@@ -132,10 +132,10 @@ O I0.6
 // ======================================================================================
 // Rung 11: Alarmas individuales (opcional)
 // M0.7 = Alarma_Emergencia → se activa si hay señal de EMG (I0.2)
-// M0.8 = Alarma_ToqueTope → se activa si se detecta el tope (I0.6)
+// M1.0 = Alarma_ToqueTope → se activa si se detecta el tope (I0.6)
 // ======================================================================================
 LD I0.2
 = M0.7 // Alarma_EMG
 
 LD I0.6
-= M0.8 // Alarma_ToqueTope
+= M1.0 // Alarma_ToqueTope
