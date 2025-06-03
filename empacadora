@@ -1,0 +1,137 @@
+// ======================================================================================
+// Rung 0: Inicio del sistema
+// MR (M0.0) se activa si:
+// - Se presiona el botón de inicio (I0.0)
+// - NO está activo el botón de parada (I0.1)
+// - NO hay emergencia (I0.2)
+// - El sensor de límite de parada (I0.6) está activo (indicando posición segura)
+// ======================================================================================
+LD I0.0
+A NOT I0.1
+A NOT I0.2
+A I0.6
+= M0.0
+
+// ======================================================================================
+// Rung 1: Paro del sistema
+// MR (M0.0) se desactiva si:
+// - Se presiona el botón de parada (I0.1)
+// - Se activa la emergencia (I0.2)
+// ======================================================================================
+LD I0.1
+O I0.2
+R M0.0, 1
+
+// ======================================================================================
+// Rung 2: Motor principal (Q0.0)
+// El motor principal gira si:
+// - MR (M0.0) está activo
+// - No hay condición de emergencia (I0.2)
+// ======================================================================================
+LD M0.0
+A NOT I0.2
+= Q0.0
+
+// ======================================================================================
+// Rung 3: Modo Inch (manual)
+// En modo manual:
+// - Se activa el motor principal (Q0.0) mientras se mantiene pulsado I0.3
+// - Siempre que no haya emergencia
+// ======================================================================================
+LD I0.3
+A NOT I0.2
+O Q0.0 // Mantén activo si ya estaba encendido (para evitar caídas)
+= Q0.0
+
+// ======================================================================================
+// Rung 4: Movimiento del material (M0.1)
+// M0.1 se activa durante operación normal, indica que el material debe moverse
+// ======================================================================================
+LD M0.0
+A NOT I0.2
+= M0.1
+
+// NOTA: I0.5 debe estar conectado como entrada rápida (HSC0) para contar los pulsos del encoder
+// y alimentar la entrada CU del contador C0
+
+// ======================================================================================
+// Rung 5: Reset del contador C0 (M0.2)
+// Cuando el contador llega a 0 (C0.Q == 1) y MR está activo:
+// - Se activa M0.2 para resetear C0 y comenzar un nuevo ciclo
+// ======================================================================================
+LD M0.0
+A C0.Q
+= M0.2
+
+LD M0.2
+R C0, 1 // Resetea el contador C0
+
+// ======================================================================================
+// Rung 6: Temporizador T1 – Acción poscorte
+// Cuando comienza el movimiento (M0.1 == 1), inicia T1 (5 segundos)
+// Al terminar, se activa Q0.1 (motor de poscorte)
+// ======================================================================================
+LD M0.1
+TON T1, 50 // 50 * 10ms = 5 segundos
+
+LD T1.Q
+= Q0.1
+
+// ======================================================================================
+// Rung 7: Temporizador T2 – Acción ajuste tamaño
+// Cuando se confirma alineación correcta (M0.5 == 1), inicia T2 (2 segundos)
+// Al terminar, se activa Q0.2 (motor de ajuste de tamaño)
+// ======================================================================================
+LD M0.5
+TON T2, 20 // 20 * 10ms = 2 segundos
+
+LD T2.Q
+= Q0.2
+
+// ======================================================================================
+// Rung 8: Verificación de alineación
+// Mientras el contador no haya terminado (C0.Q == 1):
+// - Se activa M0.4 (alignment_check): verificando alineación
+// - Si el sensor de alineación (I0.4) se activa → M0.5 (alignment_ok)
+// - Si el sensor NO se activa → M0.3 (alineacion_error)
+// ======================================================================================
+LD C0.Q
+= M0.4 // alignment_check activo mientras se mueve el material
+
+LD M0.4
+A I0.4
+= M0.5 // alignment_ok → alineación exitosa
+
+LD M0.4
+AN I0.4
+= M0.3 // alineacion_error → no se detectó señal de alineación
+
+// ======================================================================================
+// Rung 9: Reseteo del error de alineación
+// M0.3 (error de alineación) se resetea cuando MR vuelve a activarse
+// ======================================================================================
+LD M0.0
+R M0.3, 1
+
+// ======================================================================================
+// Rung 10: Alarmas generales (Q0.3)
+// La alarma general (Q0.3) se activa si:
+// - Hay error de alineación (M0.3)
+// - Hay emergencia (I0.2)
+// - Se toca el límite físico (I0.6)
+// ======================================================================================
+LD M0.3
+O I0.2
+O I0.6
+= Q0.3
+
+// ======================================================================================
+// Rung 11: Alarmas individuales (opcional)
+// M0.7 = Alarma_Emergencia → se activa si hay señal de EMG (I0.2)
+// M0.8 = Alarma_ToqueTope → se activa si se detecta el tope (I0.6)
+// ======================================================================================
+LD I0.2
+= M0.7 // Alarma_EMG
+
+LD I0.6
+= M0.8 // Alarma_ToqueTope
